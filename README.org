@@ -1,0 +1,16 @@
+#+TITLE:     README.org
+#+AUTHOR:    Hironori OKAMOTO
+#+EMAIL:     k.ten87@gmail.com
+#+DATE:      2011-12-13 Tue
+
+This is [[https://www.eff.org/https-everywhere][HTTPS Everywhere]] for emacs-w3m.
+* How to use
+~/.emacs-w3m
+#+begin_src emacs-lisp
+(require 'w3m-https-everywhere)
+
+(setq w3m-uri-replace-alist
+      (append w3m-uri-replace-alist
+	      (w3m-https-everywhere)))
+
+#+end_src emacs-lisp
