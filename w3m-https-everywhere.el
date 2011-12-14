@@ -81,7 +81,7 @@
 (defun w3m-https-everywhere-parse-ruleset (node)
   (list (format "^https?://%s/"
 		(replace-regexp-in-string
-		 "\\*"
+		 "\\\\\\*"
 		 "[^./]+"
 		 (regexp-opt (mapcar 'w3m-https-everywhere-parse-target
 				     (xml-get-children node 'target))
