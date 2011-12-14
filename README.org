@@ -5,7 +5,7 @@
 
 This is [[https://www.eff.org/https-everywhere][HTTPS Everywhere]] for emacs-w3m.
 * How to use
-~/.emacs-w3m
+** ~/.emacs-w3m
 #+begin_src emacs-lisp
 (require 'w3m-https-everywhere)
 
@@ -14,3 +14,11 @@ This is [[https://www.eff.org/https-everywhere][HTTPS Everywhere]] for emacs-w3m
 	      (w3m-https-everywhere)))
 
 #+end_src emacs-lisp
+** Rule files
+*** In debian
+#+begin_src sh
+sudo apt-get install xul-ext-https-everywhere
+
+#+end_src sh
+*** Other systems
+You have to download rule files to `w3m-https-everywhere-user-directory'.
