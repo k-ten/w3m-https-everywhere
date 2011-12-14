@@ -24,9 +24,8 @@
 
 ;;; Code:
 
-(eval-when-compile
-  (require 'cl))
-
+(require 'cl)
+(require 'regexp-opt)
 (require 'xml)
 (require 'w3m)
 
@@ -48,35 +47,72 @@
   :type 'directory
   :group 'w3m-https-everywhere)
 
+(defun w3m-https-everywhere-regexp-js-to-elisp (string)
+  (replace-regexp-in-string "[(){|}]"
+			    "\\\\\\&"
+			    string))
+
+(defun w3m-https-everywhere-newtext-js-to-elisp (string)
+  (replace-regexp-in-string "\\$\\([[:digit:]]\\)"
+			    "\\\\\\1"
+			    string))
+
+(defun w3m-https-everywhere-pattern-uri-replace (uri alist)
+  (let ((to (cdr (assoc-if '(lambda (from)
+			      (string-match from uri))
+			   alist))))
+    (if to
+	(replace-match to nil nil uri)
+      uri)))
+
+(defun w3m-https-everywhere-parse-target (node)
+  (xml-get-attribute node 'host))
+
+(defun w3m-https-everywhere-parse-exclusion (node)
+  (cons (w3m-https-everywhere-regexp-js-to-elisp
+	 (xml-get-attribute node 'pattern))
+	"\\&"))
+
 (defun w3m-https-everywhere-parse-rule (node)
-  (list (replace-regexp-in-string "[()|]"
-				  "\\\\\\&"
-				  (xml-get-attribute node 'from))
-	'w3m-pattern-uri-replace
-	(replace-regexp-in-string "\\$\\([[:digit:]]\\)"
-				  "\\\\\\1"
-				  (xml-get-attribute node 'to))))
+  (cons (w3m-https-everywhere-regexp-js-to-elisp (xml-get-attribute node 'from))
+	(w3m-https-everywhere-newtext-js-to-elisp (xml-get-attribute node
+								     'to))))
 
 (defun w3m-https-everywhere-parse-ruleset (node)
-  (mapcar 'w3m-https-everywhere-parse-rule
-	  (xml-get-children node 'rule)))
+  (list (format "^https?://%s/"
+		(replace-regexp-in-string
+		 "\\*"
+		 "[^./]+"
+		 (regexp-opt (mapcar 'w3m-https-everywhere-parse-target
+				     (xml-get-children node 'target))
+			     'paren)))
+	'w3m-https-everywhere-pattern-uri-replace
+	(loop for child in (xml-node-children node)
+	      for function = (and (listp child)
+				  (case (xml-node-name child)
+				    (exclusion
+				     'w3m-https-everywhere-parse-exclusion)
+				    (rule
+				     'w3m-https-everywhere-parse-rule)))
+	      when function
+	      collect (funcall function child))))
 
 (defun w3m-https-everywhere-parse-rulesetlibrary (node)
-  (mapcan 'w3m-https-everywhere-parse-ruleset
+  (mapcar 'w3m-https-everywhere-parse-ruleset
 	  (xml-get-children node 'ruleset)))
 
 (defun w3m-https-everywhere-parse-file (file)
-  (let ((node (xml-node-name (xml-parse-file file))))
-    (case (car node)
+  (let ((node (car (xml-parse-file file))))
+    (case (xml-node-name node)
       (rulesetlibrary (w3m-https-everywhere-parse-rulesetlibrary node))
-      (ruleset (w3m-https-everywhere-parse-ruleset node)))))
+      (ruleset (list (w3m-https-everywhere-parse-ruleset node))))))
 
-;;;###autoloads
+;;;###autoload
 (defun w3m-https-everywhere ()
   (mapcan 'w3m-https-everywhere-parse-file
 	  (mapcan (lambda (directory)
 		    (when (file-directory-p directory)
-		      (directory-files directory t "^[^.]")))
+		      (directory-files directory 'full "^[^.]")))
 		  (list w3m-https-everywhere-user-directory
 			w3m-https-everywhere-system-directory))))
 
